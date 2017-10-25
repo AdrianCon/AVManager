@@ -1,0 +1,71 @@
+﻿
+' Source: https://social.msdn.microsoft.com/Forums/windows/en-US/769ca9d6-1e9d-4d76-8c23-db535b2f19c2/sample-code-datagridview-progress-bar-column?forum=winformsdatacontrols
+'---------------------------------------------------------------------
+' THIS CODE AND INFORMATION ARE PROVIDED AS IS WITHOUT WARRANTY OF ANY
+' KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+' IMPLIED WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A
+' PARTICULAR PURPOSE.
+'---------------------------------------------------------------------
+Imports System.Drawing
+Imports System.ComponentModel
+Public Class DataGridViewProgressColumn
+    Inherits DataGridViewImageColumn
+    Public Sub New()
+        Me.CellTemplate = New DataGridViewProgressCell
+    End Sub
+End Class
+Public Class DataGridViewProgressCell
+    Inherits DataGridViewImageCell
+
+    Sub New()
+        ValueType = Type.GetType("Integer")
+    End Sub
+    ' Method required to make the Progress Cell consistent with the default Image Cell. 
+    ' The default Image Cell assumes an Image as a value, although the value of the Progress Cell is an Integer.
+    Protected Overrides Function GetFormattedValue(
+        ByVal value As Object,
+        ByVal rowIndex As Integer,
+        ByRef cellStyle As DataGridViewCellStyle,
+        ByVal valueTypeConverter As TypeConverter,
+        ByVal formattedValueTypeConverter As TypeConverter,
+        ByVal context As DataGridViewDataErrorContexts
+        ) As Object
+        Static emptyImage As Bitmap = New Bitmap(1, 1, System.Drawing.Imaging.PixelFormat.Format32bppArgb)
+        GetFormattedValue = emptyImage
+    End Function
+
+    Protected Overrides Sub Paint(ByVal g As System.Drawing.Graphics, ByVal clipBounds As System.Drawing.Rectangle, ByVal cellBounds As System.Drawing.Rectangle, ByVal rowIndex As Integer, ByVal cellState As System.Windows.Forms.DataGridViewElementStates, ByVal value As Object, ByVal formattedValue As Object, ByVal errorText As String, ByVal cellStyle As System.Windows.Forms.DataGridViewCellStyle, ByVal advancedBorderStyle As System.Windows.Forms.DataGridViewAdvancedBorderStyle, ByVal paintParts As System.Windows.Forms.DataGridViewPaintParts)
+        Dim progressVal As String
+        Dim percentage As Single
+        Dim backBrush As Brush = New SolidBrush(cellStyle.BackColor)
+        Dim foreBrush As Brush = New SolidBrush(cellStyle.ForeColor)
+
+        progressVal = If(value IsNot Nothing, value, 1)
+        If (IsNumeric(value.ToString())) Then
+            percentage = CType((progressVal / 100), Single)
+            progressVal = progressVal + "%"
+        Else
+            foreBrush = New SolidBrush(Color.White)
+            percentage = 0
+            progressVal = value
+        End If
+
+
+        ' Call the base class method to paint the default cell appearance.
+        MyBase.Paint(g, clipBounds, cellBounds, rowIndex, cellState,
+        value, formattedValue, errorText, cellStyle,
+        advancedBorderStyle, paintParts)
+        If percentage > 0.0 Then
+            ' Draw the progress bar and the text
+            g.FillRectangle(New SolidBrush(Color.FromArgb(163, 189, 242)), cellBounds.X + 2, cellBounds.Y + 2, Convert.ToInt32((percentage * cellBounds.Width - 4)), cellBounds.Height - 4)
+            g.DrawString(progressVal, cellStyle.Font, foreBrush, cellBounds.X + 6, cellBounds.Y + (cellBounds.Height / 4))
+        Else
+            'draw the text
+            If Not Me.DataGridView.CurrentCell Is Nothing AndAlso Me.DataGridView.CurrentCell.RowIndex = rowIndex Then
+                g.DrawString(progressVal, cellStyle.Font, foreBrush, cellBounds.X + 6, cellBounds.Y + (cellBounds.Height / 4))
+            Else
+                g.DrawString(progressVal, cellStyle.Font, foreBrush, cellBounds.X + 6, cellBounds.Y + (cellBounds.Height / 4))
+            End If
+        End If
+    End Sub
+End Class
