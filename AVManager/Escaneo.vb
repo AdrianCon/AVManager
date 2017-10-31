@@ -17,11 +17,13 @@ Public Class Escaneo
     Private _Comenzado As Boolean
     Private _Terminado As Boolean
     Private Terminando As Boolean
+    Private Cancelando As Boolean
     Private _ArchivosEscaneados As Integer
     Private _Progreso As Integer
     Private FileCount As Long
     Private FrozenFileCount As Integer
     Private _Frozen As Boolean
+    Private Output As String
 
     '   Controladores del escaneo
     Private _Proceso As Process
@@ -121,6 +123,7 @@ Public Class Escaneo
         Comenzado = False
         Terminado = False
         Terminando = False
+        Cancelando = False
         ArchivosEscaneados = 0
         Progreso = 0
         FileCount = 0
@@ -134,6 +137,7 @@ Public Class Escaneo
             .RedirectStandardOutput = True,
             .RedirectStandardInput = True
         }
+        Output = ""
         ctsContador = New CancellationTokenSource()
     End Sub
 
@@ -146,7 +150,7 @@ Public Class Escaneo
     End Sub
 
     Private Sub Escanear()
-        Dim output As String = ""
+        Output = ""
         Try
             Proceso.Start()
             Do While Not Proceso.HasExited  ' Mientras que el escaneo no haya terminado
@@ -170,12 +174,12 @@ Public Class Escaneo
                                 Catch ex As Exception
                                 End Try
                             End If
-                        ElseIf (output.Contains("Statistics")) Then
-                            Exit Do
                         ElseIf (output.Contains("Scan_Objects$")) Then
                             ID = output.Substring(output.IndexOf("Scan_Objects$"), 17)
                         ElseIf (output.Substring(output.Length - 1 - 2).Contains("ok") Or output.Contains("skipped: no rights")) Then
                             ArchivosEscaneados += 1
+                        ElseIf (output.Contains("Statistics")) Then
+                            Exit Do
                         Else
                             'Debug.WriteLine("No se contó linea: " & output) ' debug
                         End If
@@ -196,6 +200,7 @@ Public Class Escaneo
             Comenzado = False
             Terminando = False
             Terminado = False
+            Cancelando = False
             Manual = True
             Congelado = False
             FrozenFileCount = 0
@@ -203,6 +208,7 @@ Public Class Escaneo
             ctsContador.Cancel()
             ctsContador.Dispose()
             ctsContador = New CancellationTokenSource()
+            Output = ""
             Comenzar()
         Else
             MsgBox("Error al reiniciar " & Path)
@@ -211,10 +217,10 @@ Public Class Escaneo
 
     Public Async Function Cancelar() As Task(Of Boolean)   ' Hay que aislar el comportamiento del escaneo del del controlador de escaneos. Solamente cancelar, no modificar UI
         Try
-            If (Terminando Or Terminado) Then
+            If (Cancelando Or Terminado) Then
                 Return False
             End If
-            Terminando = True
+            Cancelando = True
             ' Cancelamos el proceso y el conteo de archivos
             Dim scanID As String = ID
             Shell(Chr(34) & Privado.ProgramPath & Chr(34) & " stop " & scanID & " /password=" & Privado.Password, AppWinStyle.Hide)
@@ -229,37 +235,41 @@ Public Class Escaneo
                 tiempoTotal += 100
             Loop
 
-            Await Proceso.StandardOutput.ReadToEndAsync()
+            'Await Proceso.StandardOutput.ReadToEndAsync()
 
             ' Solamente los equipos que tuvieron un % de escaneo de 99+ se considerarán como válidos
-            Terminado = True
             Terminar()
 
         Catch ex As Exception
-            Terminado = False
+            Cancelando = False
             Return False
         End Try
         Return True
     End Function
 
     Public Sub Terminar()
-        If (Terminando Or Terminado) Then
-            Exit Sub
-        End If
-        ' Ya se mando a llamar RegistraExitoUI/RegistraErrorUI antes
-        If (Progreso >= 99) Then ' Or Progreso.ExitCode = codeSuccess
-            Progreso = 100
-            RegistraReporte()
-        Else
-            Try
+        Try
+            If (Terminando Or Terminado) Then
+                Exit Sub
+            End If
+            Terminando = True
+            ' Ya se mando a llamar RegistraExitoUI/RegistraErrorUI antes
+            If (Progreso >= 99) Then ' Or Progreso.ExitCode = codeSuccess
+                Progreso = 100
+                RegistraReporte()
+            Else
                 RegistraReporteError()    ' Registra un reporte de el escaneo fallido al igual que su razón de falla. Esto con una finalidad analítica de datos.
-                'Catch ex As Exception
-            Finally
-                'Proceso.StandardOutput.ReadToEndAsync()
-                'Proceso.Close()
-            End Try
-        End If
-        Terminado = True
+                Try
+                    'Catch ex As Exception
+                Finally
+                    'Proceso.StandardOutput.ReadToEndAsync()
+                    'Proceso.Close()
+                End Try
+            End If
+            Terminado = True
+        Catch ex As Exception
+            Terminando = False
+        End Try
     End Sub
 
     Public Function ChecaCongleado() As Boolean
@@ -290,15 +300,17 @@ Public Class Escaneo
         Try
             ' Inicialización
             Dim linea As String = ""
-            Dim output As String = ""
             Dim statistics As List(Of String) = New List(Of String)
 
             ' Leemos el resto del StdOutput hasta encontrar la linea que indica el inicio de los Statistics
             Do While (output.Contains("Statistics") Or Proceso.StandardOutput.EndOfStream)
-                output = LeeLineas(Proceso, 1)
+                Output = LeeLineas(Proceso, 1)
+                Application.DoEvents()
             Loop
 
+            ' Si ya se llego a EndOfStream, no tenemos los datos para registrarlos.
             If (Proceso.StandardOutput.EndOfStream) Then
+                MsgBox(Path & " EOF. No se puede generar el reporte.")
                 Exit Sub
             End If
 
@@ -323,7 +335,7 @@ Public Class Escaneo
             Dim totalDetectado As String = Mid(linea, InStr(linea, ":") + 2)
 
             ' Aseguramos que el proceso no se quede esperando que lean algo de el
-            Proceso.StandardOutput.ReadToEndAsync()
+            Await Proceso.StandardOutput.ReadToEndAsync()
             Proceso.StandardOutput.Close()
 
             ' Agregamos los datos a un objeto de Parse y damos guardar
@@ -388,89 +400,82 @@ Public Class Escaneo
     Private Async Sub RegistraReporteError()
         ' Inicialización
         Dim linea As String = ""
-        Dim output As String = ""
         Dim statistics As List(Of String) = New List(Of String)
 
-        ' Leemos el resto del StdOutput hasta encontrar la linea que indica el inicio de los Statistics
-        'output = LeeLineas(Proceso, 1)
-        'If (Not output.Equals(";  --- Statistics ---")) Then
-        '    'Debug.WriteLine(output)
-        '    Do While (Proceso.StandardOutput.EndOfStream)
-        '        If output.Equals(";  --- Statistics ---") Then
-        '            Exit Do
-        '        Else
-        '            output = LeeLineas(Proceso, 1)
-        '            Debug.WriteLine(output)
-        '        End If
-        '    Loop
-        'End If
-
-        If (Proceso.StandardOutput.EndOfStream) Then
-            Exit Sub
-        End If
-
-        ' Leemos todas las lineas de los statistics
-        Do While (Not Proceso.StandardOutput.EndOfStream)
-            statistics.Add(LeeLineas(Proceso, 1))
-        Loop
-
-        ' Leemos y guardamos los datos correspondientes al escaneo actual
-        Dim disco As String = Path
-        Dim nombre As String = disco.Substring(2) ', InStr(3, disco, "\", CompareMethod.Text) - 2)
-        linea = statistics(0)
-        Dim fechaEscaneo As String = Mid(linea, InStr(linea, ":") + 2)
-        Dim fechaInicio As Date = Date.ParseExact(fechaEscaneo, "yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture).ToUniversalTime
-        ' Processed Objects
-        linea = statistics(1)
-        Dim fechaEscaneoFin As String = Mid(linea, InStr(linea, ":") + 2)
-        Dim fechaFin As Date = Date.ParseExact(fechaEscaneoFin, "yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture).ToUniversalTime
-        linea = statistics(2)
-        'Dim porcentaje As String = Mid(linea, InStr(linea, ":") + 2)
-        Dim totalEscaneado As String = Mid(linea, InStr(linea, ":") + 2)
-        ' Total Detected
-        linea = statistics(3)
-        Dim totalDetectado As String = Mid(linea, InStr(linea, ":") + 2)
-        ' Suspicions
-        linea = statistics(4)
-
-        ' Aseguramos que el proceso no se quede esperando que lean algo de el
-        Proceso.StandardOutput.ReadToEndAsync()
-        Proceso.StandardOutput.Close()
-
-        ' Agregamos los datos a un objeto de Parse y damos guardar
-        Dim escaneo As ParseObject = New ParseObject("Escaneos")
-        escaneo.Add("Nombre", nombre)
-        escaneo.Add("FechaInicio", fechaInicio)
-        escaneo.Add("FechaFin", fechaFin)   ' Fecha fin parece no ser parte de los logs
-        escaneo.Add("Porcentaje", Progreso & "%")
-        escaneo.Add("TotalEscaneado", totalEscaneado)
-        escaneo.Add("TotalDetectado", totalDetectado)
-        escaneo.Add("ExitCode", Proceso.ExitCode)
         Try
+            ' Leemos el resto del StdOutput hasta encontrar la linea que indica el inicio de los Statistics
+            Do While (Not Output.Contains("Statistics") And Not Proceso.StandardOutput.EndOfStream)
+                Output = LeeLineas(Proceso, 1)
+                Application.DoEvents()
+            Loop
+
+            If (Proceso.StandardOutput.EndOfStream) Then
+                Throw (New Exception("EOF Reached."))
+            End If
+
+            ' Leemos todas las lineas de los statistics
+            Do While (Not Proceso.StandardOutput.EndOfStream)
+                statistics.Add(LeeLineas(Proceso, 1))
+            Loop
+
+            ' Leemos y guardamos los datos correspondientes al escaneo actual
+            Dim disco As String = Path
+            Dim nombre As String = disco.Substring(2) ', InStr(3, disco, "\", CompareMethod.Text) - 2)
+            linea = statistics(0)
+            Dim fechaEscaneo As String = Mid(linea, InStr(linea, ":") + 2)
+            Dim fechaInicio As Date = Date.ParseExact(fechaEscaneo, "yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture).ToUniversalTime
+            ' Processed Objects
+            linea = statistics(1)
+            Dim fechaEscaneoFin As String = Mid(linea, InStr(linea, ":") + 2)
+            Dim fechaFin As Date = Date.ParseExact(fechaEscaneoFin, "yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture).ToUniversalTime
+            linea = statistics(2)
+            'Dim porcentaje As String = Mid(linea, InStr(linea, ":") + 2)
+            Dim totalEscaneado As String = Mid(linea, InStr(linea, ":") + 2)
+            ' Total Detected
+            linea = statistics(3)
+            Dim totalDetectado As String = Mid(linea, InStr(linea, ":") + 2)
+            ' Suspicions
+            linea = statistics(4)
+
+            ' Aseguramos que el proceso no se quede esperando que lean algo de el
+            Proceso.StandardOutput.ReadToEndAsync()
+            Proceso.StandardOutput.Close()
+
+            ' Agregamos los datos a un objeto de Parse y damos guardar
+            Dim escaneo As ParseObject = New ParseObject("Escaneos")
+            escaneo.Add("Nombre", nombre)
+            escaneo.Add("FechaInicio", fechaInicio)
+            escaneo.Add("FechaFin", fechaFin)   ' Fecha fin parece no ser parte de los logs
+            escaneo.Add("Porcentaje", Progreso & "%")
+            escaneo.Add("TotalEscaneado", totalEscaneado)
+            escaneo.Add("TotalDetectado", totalDetectado)
+            escaneo.Add("ExitCode", Proceso.ExitCode)
             Await escaneo.SaveAsync()
-        Catch ex As Exception
-            Debug.WriteLine("Escaneo \\" & nombre & ": Error al guardar el reporte de error. " & ex.Message)
-        End Try
-        '   Actualizamos el atibuto UltimoEscaneo del equipo y Total Escaneado
-        Dim query = ParseObject.GetQuery("Equipos").WhereEqualTo("NombreDeRed", Equipo)
-        Dim result = (Await query.FindAsync()).ToList
-        If result.Count >= 1 Then
-            For i = 0 To result.Count - 1
-                Dim equipo = result.Item(i)
-                Dim relation As ParseRelation(Of ParseObject) = equipo.Get(Of ParseRelation(Of ParseObject))("Discos")
-                Dim discos As List(Of ParseObject) = (Await relation.Query.FindAsync).ToList
-                Dim NumDiscos = discos.Count
-                For diskIndex = 0 To NumDiscos - 1
-                    Dim discoParse As ParseObject = discos(diskIndex)
-                    If (discoParse.Get(Of String)("Nombre") = Me.Disco.Nombre) Then
-                        Dim relationDisco As ParseRelation(Of ParseObject) = discoParse.Get(Of ParseRelation(Of ParseObject))("Escaneos")
-                        relationDisco.Add(escaneo)
-                        Await discoParse.SaveAsync()
-                        Exit For
-                    End If
+
+            '   Actualizamos el atibuto UltimoEscaneo del equipo y Total Escaneado
+            Dim query = ParseObject.GetQuery("Equipos").WhereEqualTo("NombreDeRed", Equipo)
+            Dim result = (Await query.FindAsync()).ToList
+            If result.Count >= 1 Then
+                For i = 0 To result.Count - 1
+                    Dim equipo = result.Item(i)
+                    Dim relation As ParseRelation(Of ParseObject) = equipo.Get(Of ParseRelation(Of ParseObject))("Discos")
+                    Dim discos As List(Of ParseObject) = (Await relation.Query.FindAsync).ToList
+                    Dim NumDiscos = discos.Count
+                    For diskIndex = 0 To NumDiscos - 1
+                        Dim discoParse As ParseObject = discos(diskIndex)
+                        If (discoParse.Get(Of String)("Nombre") = Me.Disco.Nombre) Then
+                            Dim relationDisco As ParseRelation(Of ParseObject) = discoParse.Get(Of ParseRelation(Of ParseObject))("Escaneos")
+                            relationDisco.Add(escaneo)
+                            Await discoParse.SaveAsync()
+                            Debug.WriteLine("Escaneo \\" & nombre & ": Reporte de error guardado correctamente.")
+                            Exit For
+                        End If
+                    Next
                 Next
-            Next
-        End If
+            End If
+        Catch ex As Exception
+            Debug.WriteLine("Escaneo " & Path & ": Error al guardar el reporte de error. " & ex.Message)
+        End Try
     End Sub
 
     '   Inicia el conteo de archivos en el disco a escanear para medir el progreso
