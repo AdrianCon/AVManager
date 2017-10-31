@@ -45,6 +45,7 @@ Public Class Escaneos
     Public WithEvents timerDiario As System.Windows.Forms.Timer = New System.Windows.Forms.Timer    '   Timer que se encarga de iniciar los escaneos diario
     Public WithEvents timerUpdates As System.Windows.Forms.Timer = New System.Windows.Forms.Timer   '   Timer que se encarga de modificar los datos que el UI utilizará
     Public WithEvents timerFrozen As System.Windows.Forms.Timer = New System.Windows.Forms.Timer    '   Timer que se encarga de matar escaneos que no respondan
+    Public WithEvents timerDBUpdate As System.Windows.Forms.Timer = New System.Windows.Forms.Timer    '   Timer que se encarga de matar escaneos que no respondan
 
     '   Configuración Inicial
     Private Sub Escaneos_Load(sender As Object, e As EventArgs) Handles MyBase.Load
@@ -85,7 +86,7 @@ Public Class Escaneos
 
         ' Auto-Start Escaneos
         timerDiario.Interval = CInt(TimeSpan.FromSeconds(30).TotalMilliseconds) '.FromDays(1).TotalMilliseconds)
-        'timerDiario.Enabled = True ' debug
+        timerDiario.Enabled = True
 
         ' Update Scan Info
         timerUpdates.Interval = 200
@@ -94,6 +95,10 @@ Public Class Escaneos
         ' Kill Frozen Scans
         timerFrozen.Interval = TimeSpan.FromMinutes(10).TotalMilliseconds
         'timerFrozen.Enabled = True
+
+        ' Update Scan Info
+        timerDBUpdate.Interval = CInt(TimeSpan.FromMinutes(30).TotalMilliseconds) '.FromDays(1).TotalMilliseconds)
+        timerDBUpdate.Enabled = True
 
         ' TaskBar Progress Report
         'Dim a As Microsoft.WindowsAPICodePack.Taskbar.TabbedThumbnail = New Microsoft.WindowsAPICodePack.Taskbar.TabbedThumbnail(Me.Handle, Me)
@@ -155,7 +160,6 @@ Public Class Escaneos
         End Try
 
     End Function
-
 
 
 
@@ -483,6 +487,12 @@ Public Class Escaneos
         timerDiario.Enabled = True
         timerDiario.Start()
     End Sub
+
+    ' Actualiza la base de datos periódicamente
+    Private Sub timerDBUpdate_Tick(sender As Object, e As EventArgs) Handles timerDBUpdate.Tick
+        Shell(Chr(34) & Privado.ProgramPath & Chr(34) & " update", AppWinStyle.Hide)
+    End Sub
+
 
 
 
