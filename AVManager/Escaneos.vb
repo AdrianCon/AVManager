@@ -176,8 +176,8 @@ Public Class Escaneos
                         dtgEscaneos.Item("Escaneo", i).Value = EscaneoActual.Progreso ' Actualiza el valor en el ProgressBar correspondiente
                         dtgEscaneos.Item("Archivo", i).Value = EscaneoActual.ArchivosEscaneados
                     Else
+                        EscaneoActual.Terminar()
                         If (EscaneoActual.Proceso.ExitCode = codeSuccess Or EscaneoActual.Progreso >= 99) Then     ' Solamente los equipos que tuvieron un % de escaneo de 99+ se considerarán como válidos
-                            EscaneoActual.Terminar(True)
                             RegistraExitoUI(i)
                             ' Actualizamos la fecha de ultimo escaneo en la lista de equipos
                             For c = 0 To dtgEquipos.RowCount - 1
@@ -187,7 +187,6 @@ Public Class Escaneos
                                 End If
                             Next
                         Else
-                            EscaneoActual.Terminar(False)
                             RegistraErrorUI(i)
                         End If
                     End If
@@ -440,10 +439,8 @@ Public Class Escaneos
 
             ' Solamente los equipos que tuvieron un % de escaneo de 99+ se considerarán como válidos
             If (ListaEscaneos(index).Progreso >= 99) Then
-                ListaEscaneos(index).Terminar(True)
                 RegistraExitoUI(index)
             Else
-                ListaEscaneos(index).Terminar(False)
                 RegistraErrorUI(index)
             End If
         Catch ex As Exception

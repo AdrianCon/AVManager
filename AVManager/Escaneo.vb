@@ -16,6 +16,7 @@ Public Class Escaneo
     Private Congelado As Boolean
     Private _Comenzado As Boolean
     Private _Terminado As Boolean
+    Private Terminando As Boolean
     Private _ArchivosEscaneados As Integer
     Private _Progreso As Integer
     Private FileCount As Long
@@ -108,12 +109,6 @@ Public Class Escaneo
     End Property                ' Proceso - Public Get, Private Set
 
 
-    Public Sub New()
-        Path = ""
-        Equipo = ""
-        Terminado = False
-    End Sub
-
     Public Sub New(ByVal index As Integer, ByRef disco As ParseObject, ByVal manual As Boolean)
         Me.Equipo = disco.Get(Of ParseObject)("Equipo").Get(Of String)("NombreDeRed")
         Me.Disco = New Disco(disco)
@@ -125,6 +120,7 @@ Public Class Escaneo
         Congelado = False
         Comenzado = False
         Terminado = False
+        Terminando = False
         ArchivosEscaneados = 0
         Progreso = 0
         FileCount = 0
@@ -193,12 +189,12 @@ Public Class Escaneo
         End Try
     End Sub
 
-    Public Sub Reiniciar()
-        ' If (Cancelar()) Then
+    Public Async Sub Reiniciar()
         If (Terminado) Then
             Progreso = 0
             ArchivosEscaneados = 0
             Comenzado = False
+            Terminando = False
             Terminado = False
             Manual = True
             Congelado = False
@@ -215,34 +211,49 @@ Public Class Escaneo
 
     Public Async Function Cancelar() As Task(Of Boolean)   ' Hay que aislar el comportamiento del escaneo del del controlador de escaneos. Solamente cancelar, no modificar UI
         Try
+            If (Terminando Or Terminado) Then
+                Return False
+            End If
+            Terminando = True
             ' Cancelamos el proceso y el conteo de archivos
             Dim scanID As String = ID
             Shell(Chr(34) & Privado.ProgramPath & Chr(34) & " stop " & scanID & " /password=" & Privado.Password, AppWinStyle.Hide)
             ctsContador.Cancel()
 
-            Await Proceso.StandardOutput.ReadToEndAsync()
+            'Await Proceso.StandardOutput.ReadToEndAsync()
 
-            Terminado = True
             Dim tiempoTotal As Integer = 0
             ' Esperamos 5 segundos a que termine el proceso para recibir el código de salida. En caso de no tenerlo, se marca como no terminado y se reintenta registrar
             Do Until Proceso.WaitForExit(100) Or tiempoTotal > 5 * 1000
                 Application.DoEvents()
                 tiempoTotal += 100
             Loop
+
+            Await Proceso.StandardOutput.ReadToEndAsync()
+
+            ' Solamente los equipos que tuvieron un % de escaneo de 99+ se considerarán como válidos
+            Terminado = True
+            Terminar()
+
         Catch ex As Exception
+            Terminado = False
             Return False
         End Try
         Return True
     End Function
 
-    Public Sub Terminar(ByVal exito As Boolean)
+    Public Sub Terminar()
+        If (Terminando Or Terminado) Then
+            Exit Sub
+        End If
         ' Ya se mando a llamar RegistraExitoUI/RegistraErrorUI antes
-        If (exito) Then
+        If (Progreso >= 99) Then ' Or Progreso.ExitCode = codeSuccess
             Progreso = 100
             RegistraReporte()
         Else
             Try
                 RegistraReporteError()    ' Registra un reporte de el escaneo fallido al igual que su razón de falla. Esto con una finalidad analítica de datos.
+                'Catch ex As Exception
             Finally
                 'Proceso.StandardOutput.ReadToEndAsync()
                 'Proceso.Close()
