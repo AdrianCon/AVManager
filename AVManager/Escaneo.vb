@@ -382,15 +382,17 @@ Public Class Escaneo
 
         ' Leemos el resto del StdOutput hasta encontrar la linea que indica el inicio de los Statistics
         'output = LeeLineas(Proceso, 1)
-        'Debug.WriteLine(output)
-        'Do While (Proceso.StandardOutput.EndOfStream)
-        '    If output.Equals(";  --- Statistics ---") Then
-        '        Exit Do
-        '    Else
-        '        output = LeeLineas(Proceso, 1)
-        '        Debug.WriteLine(output)
-        '    End If
-        'Loop
+        'If (Not output.Equals(";  --- Statistics ---")) Then
+        '    'Debug.WriteLine(output)
+        '    Do While (Proceso.StandardOutput.EndOfStream)
+        '        If output.Equals(";  --- Statistics ---") Then
+        '            Exit Do
+        '        Else
+        '            output = LeeLineas(Proceso, 1)
+        '            Debug.WriteLine(output)
+        '        End If
+        '    Loop
+        'End If
 
         If (Proceso.StandardOutput.EndOfStream) Then
             Exit Sub
