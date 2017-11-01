@@ -155,16 +155,16 @@ Public Class Escaneo
             Proceso.Start()
             Do While Not Proceso.HasExited  ' Mientras que el escaneo no haya terminado
                 Try
-                    output = Proceso.StandardOutput.ReadLine()                          ' Leemos una linea del output
-                    If (output IsNot Nothing) Then
-                        If (output.Contains("Progress ")) Then                          ' Si la linea contiene "Progress" significa que esa linea indica nuestro % de completado
+                    Output = Proceso.StandardOutput.ReadLine()                          ' Leemos una linea del output
+                    If (Output IsNot Nothing) Then
+                        If (Output.Contains("Progress ")) Then                          ' Si la linea contiene "Progress" significa que esa linea indica nuestro % de completado
                             If (FileCount = -1) Then
                                 Try                                                     ' En caso de que haya errores, se controlará mas delante
-                                    output = output.Substring(output.Length - 6, 2)     ' Leemos el % de completado dentro del string (ejemplo: "Progress 17%...")
-                                    If (Not IsNumeric(output(0))) Then                  ' Si el primer caracter no es un número, siginica que el porcentaje esta dado solamente por un dígito
-                                        output = output.Remove(0, 1)                    ' Eliminamos el texto y dejamos solo el caracter numérico
+                                    Output = Output.Substring(Output.Length - 6, 2)     ' Leemos el % de completado dentro del string (ejemplo: "Progress 17%...")
+                                    If (Not IsNumeric(Output(0))) Then                  ' Si el primer caracter no es un número, siginica que el porcentaje esta dado solamente por un dígito
+                                        Output = Output.Remove(0, 1)                    ' Eliminamos el texto y dejamos solo el caracter numérico
                                     End If
-                                    Progreso = CInt(output)                             ' Escribimos el % completado en el arreglo de Valores (en su indice correspondiente)
+                                    Progreso = CInt(Output)                             ' Escribimos el % completado en el arreglo de Valores (en su indice correspondiente)
                                 Catch ex2 As Exception
                                 End Try
                             Else
@@ -174,11 +174,11 @@ Public Class Escaneo
                                 Catch ex As Exception
                                 End Try
                             End If
-                        ElseIf (output.Contains("Scan_Objects$")) Then
-                            ID = output.Substring(output.IndexOf("Scan_Objects$"), 17)
-                        ElseIf (output.Substring(output.Length - 1 - 2).Contains("ok") Or output.Contains("skipped: no rights")) Then
+                        ElseIf (Output.Contains("Scan_Objects$")) Then
+                            ID = Output.Substring(Output.IndexOf("Scan_Objects$"), 17)
+                        ElseIf (Output.Substring(Output.Length - 1 - 2).Contains("ok") Or Output.Contains("skipped: no rights")) Then
                             ArchivosEscaneados += 1
-                        ElseIf (output.Contains("Statistics")) Then
+                        ElseIf (Output.Contains("Statistics")) Then
                             Exit Do
                         Else
                             'Debug.WriteLine("No se contó linea: " & output) ' debug
@@ -297,20 +297,20 @@ Public Class Escaneo
     '   Registra el reporte del escaneo a la base de datos y actualiza el atributo UltimoEscaneo del equipo
     Private Async Sub RegistraReporte()
         ' También en la parte de UltimoEscaneo hay que hacerlo un arreglo de Dates para que cada uno represente cada uno de sus discos
-        Try
-            ' Inicialización
-            Dim linea As String = ""
-            Dim statistics As List(Of String) = New List(Of String)
+        ' Inicialización
+        Dim linea As String = ""
+        Dim statistics As List(Of String) = New List(Of String)
 
+        Try
             ' Leemos el resto del StdOutput hasta encontrar la linea que indica el inicio de los Statistics
-            Do While (output.Contains("Statistics") Or Proceso.StandardOutput.EndOfStream)
+            Do While (Not Proceso.StandardOutput.EndOfStream And Not Output.Contains("Statistics"))
                 Output = LeeLineas(Proceso, 1)
                 Application.DoEvents()
             Loop
 
             ' Si ya se llego a EndOfStream, no tenemos los datos para registrarlos.
             If (Proceso.StandardOutput.EndOfStream) Then
-                MsgBox(Path & " EOF. No se puede generar el reporte.")
+                Throw (New Exception("EOF Reached."))
                 Exit Sub
             End If
 
@@ -320,18 +320,20 @@ Public Class Escaneo
             Loop
 
             ' Leemos y guardamos los datos correspondientes al escaneo actual
-            Dim nombre As String = Path.Substring(2) ', InStr(3, disco, "\", CompareMethod.Text) - 2)
+            Dim nombre As String = Path.Substring(2)
+            ' Fecha Inicio Escaneo
             linea = statistics(0)
             Dim fechaEscaneo As String = Mid(linea, InStr(linea, ":") + 2)
             Dim fechaInicio As Date = Date.ParseExact(fechaEscaneo, "yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture).ToUniversalTime
+            ' Fecha Fin Escaneo
             linea = statistics(1)
             Dim fechaEscaneoFin As String = Mid(linea, InStr(linea, ":") + 2)
             Dim fechaFin As Date = Date.ParseExact(fechaEscaneoFin, "yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture).ToUniversalTime
-            'linea = statistics(2)
-            'Dim porcentaje As String = Mid(linea, InStr(linea, ":") + 2)
+            ' Processed Objects
             linea = statistics(3)
             Dim totalEscaneado As String = Mid(linea, InStr(linea, ":") + 2)
-            linea = statistics(4)
+            ' Total Detected
+            linea = statistics(5)
             Dim totalDetectado As String = Mid(linea, InStr(linea, ":") + 2)
 
             ' Aseguramos que el proceso no se quede esperando que lean algo de el
@@ -347,11 +349,7 @@ Public Class Escaneo
             escaneo.Add("TotalEscaneado", totalEscaneado)
             escaneo.Add("TotalDetectado", totalDetectado)
             escaneo.Add("ExitCode", Proceso.ExitCode)
-            Try
-                Await escaneo.SaveAsync()
-            Catch ex As Exception
-                Debug.WriteLine("Escaneo \\" & nombre & ": Error al guardar el reporte. " & ex.Message)
-            End Try
+            Await escaneo.SaveAsync()
 
             '   Actualizamos el atibuto UltimoEscaneo del equipo y Total Escaneado
             Dim query = ParseObject.GetQuery("Equipos").WhereEqualTo("NombreDeRed", Equipo)
@@ -390,9 +388,10 @@ Public Class Escaneo
                     Next
                 Next
             Else
-                MsgBox("No se encontro: " & Chr(34) & Path & Chr(34))
+                MsgBox("No se encontro: " & Chr(34) & Path & Chr(34) & " en Parse.")
             End If
         Catch ex As Exception
+            Debug.WriteLine("Escaneo " & Path & ": Error al guardar el reporte. " & ex.Message)
         End Try
     End Sub
 
@@ -420,22 +419,21 @@ Public Class Escaneo
 
             ' Leemos y guardamos los datos correspondientes al escaneo actual
             Dim disco As String = Path
-            Dim nombre As String = disco.Substring(2) ', InStr(3, disco, "\", CompareMethod.Text) - 2)
+            Dim nombre As String = disco.Substring(2)
+            ' Fecha Inicio de Escaneo
             linea = statistics(0)
             Dim fechaEscaneo As String = Mid(linea, InStr(linea, ":") + 2)
             Dim fechaInicio As Date = Date.ParseExact(fechaEscaneo, "yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture).ToUniversalTime
-            ' Processed Objects
+            ' Fecha Fin de Escaneo
             linea = statistics(1)
             Dim fechaEscaneoFin As String = Mid(linea, InStr(linea, ":") + 2)
             Dim fechaFin As Date = Date.ParseExact(fechaEscaneoFin, "yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture).ToUniversalTime
-            linea = statistics(2)
-            'Dim porcentaje As String = Mid(linea, InStr(linea, ":") + 2)
+            ' Processed Objects
+            linea = statistics(3)
             Dim totalEscaneado As String = Mid(linea, InStr(linea, ":") + 2)
             ' Total Detected
-            linea = statistics(3)
+            linea = statistics(5)
             Dim totalDetectado As String = Mid(linea, InStr(linea, ":") + 2)
-            ' Suspicions
-            linea = statistics(4)
 
             ' Aseguramos que el proceso no se quede esperando que lean algo de el
             Proceso.StandardOutput.ReadToEndAsync()
@@ -472,6 +470,8 @@ Public Class Escaneo
                         End If
                     Next
                 Next
+            Else
+                MsgBox("No se encontro: " & Chr(34) & Path & Chr(34) & " en Parse.")
             End If
         Catch ex As Exception
             Debug.WriteLine("Escaneo " & Path & ": Error al guardar el reporte de error. " & ex.Message)
