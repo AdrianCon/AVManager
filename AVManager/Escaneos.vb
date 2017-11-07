@@ -172,10 +172,8 @@ Public Class Escaneos
         For i = 0 To ListaEscaneos.Count - 1
             EscaneoActual = ListaEscaneos(i)
             Try
-                If (Not EscaneoActual.Terminado) Then
-                    If (Not EscaneoActual.Comenzado) Then
-                        Continue For
-                    End If
+                If (Not EscaneoActual.Terminado And EscaneoActual.Comenzado) Then
+                    ' Poner terminado y terminando en el if para validar que un no se haya comenzado la terminacion o terminado la misma del escaneo
                     If (Not EscaneoActual.Proceso.HasExited) Then
                         dtgEscaneos.Item("Escaneo", i).Value = EscaneoActual.Progreso ' Actualiza el valor en el ProgressBar correspondiente
                         dtgEscaneos.Item("Archivo", i).Value = EscaneoActual.ArchivosEscaneados
@@ -437,18 +435,11 @@ Public Class Escaneos
             End If
 
             ' Cancelamos el proceso y el conteo de archivos
-            Await ListaEscaneos(index).Cancelar()
+            ListaEscaneos(index).Cancelar()
             dtgEscaneos.Item(1, index).Style.BackColor = Color.OrangeRed
             dtgEscaneos.Item(1, index).Style.SelectionBackColor = Color.OrangeRed
-
-            ' Solamente los equipos que tuvieron un % de escaneo de 99+ se considerarán como válidos
-            If (ListaEscaneos(index).Progreso >= 99) Then
-                RegistraExitoUI(index)
-            Else
-                RegistraErrorUI(index)
-            End If
         Catch ex As Exception
-            MsgBox("ERROR EN CANCELACION: " & ex.Message)
+            MsgBox("ERROR EN CANCELACION: " & ex.Message & vbNewLine & ex.StackTrace)
         End Try
     End Function
 
