@@ -580,11 +580,12 @@ Public Class Escaneos
     Private clickedCellRow As Integer = -1
     '   Cierra la ventana en caso de ser necesario
     Private Sub cmsEquipos_Opening(sender As Object, e As CancelEventArgs) Handles cmsEquipos.Opening
-        Dim index = mouseLocation.RowIndex
+        Dim index As Integer = mouseLocation.RowIndex
         If (index = -1) Then
             e.Cancel = True
             Exit Sub
         End If
+        clickedCellRow = index
     End Sub
 
     '   Registra cuando el cursor entra a una celda, actualizando mouseLocation
@@ -600,7 +601,7 @@ Public Class Escaneos
     '   Inicia un escaneo de manera manual. Este no cuenta para el límite de maxThreads (escaneos en paralelo).
     Private Sub EscanearDiscoToolStripMenuItem_Click(sender As Object, e As EventArgs) Handles EscanearDiscoToolStripMenuItem.Click
         Dim indiceEscaneo As Integer = -1
-        Dim nombre As String = dtgEquipos.Item(1, mouseLocation.RowIndex).Value
+        Dim nombre As String = dtgEquipos.Item(1, clickedCellRow).Value
 
         For i = 0 To dtgEscaneos.RowCount - 1
             If (nombre = dtgEscaneos.Item(0, i).Value) Then
@@ -608,9 +609,12 @@ Public Class Escaneos
                 Exit For
             End If
         Next
-        If indiceEscaneo > -1 Then
+        If indiceEscaneo = -1 Then
+            EscaneoManual(indiceEscaneo, nombre)
+        ElseIf ListaEscaneos(indiceEscaneo).Terminado Then
             EscaneoManual(indiceEscaneo, nombre)
         End If
+
     End Sub
 
 
