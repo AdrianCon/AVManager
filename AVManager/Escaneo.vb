@@ -175,7 +175,9 @@ Public Class Escaneo
                                 End Try
                             End If
                         ElseIf (Output.Contains("Scan_Objects$")) Then
-                            ID = Output.Substring(Output.IndexOf("Scan_Objects$"), 17)
+                            Dim iStart As Integer = Output.IndexOf("Scan_Objects$")
+                            Dim iLength As Integer = Output.IndexOf(" ", iStart) - iStart
+                            ID = Output.Substring(iStart, iLength)
                         ElseIf (Output.Substring(Output.Length - 1 - 2).Contains("ok") Or Output.Contains("skipped: no rights")) Then
                             ArchivosEscaneados += 1
                         ElseIf (Output.Contains("Statistics")) Then
