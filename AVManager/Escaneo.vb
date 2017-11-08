@@ -4,6 +4,9 @@ Imports Parse
 Imports System.IO
 
 Public Class Escaneo
+    '   Static variable for all scans
+    Public Shared FileThreshold As Integer
+
     '   Información del destino (Todos los public se protegen de escritura a través de properties)
     Private _Path As String
     Private _Equipo As String
@@ -253,7 +256,7 @@ Public Class Escaneo
             End If
 
             Terminando = True
-            If (Progreso >= 99) Then ' Or Progreso.ExitCode = codeSuccess And FileCount > Threshold
+            If (Progreso >= 99 And FileCount >= FileThreshold) Then
                 Progreso = 100
                 RegistraReporte()
             Else

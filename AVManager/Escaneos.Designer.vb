@@ -33,9 +33,6 @@ Partial Class Escaneos
         Me.EscanearDiscoToolStripMenuItem = New System.Windows.Forms.ToolStripMenuItem()
         Me.btnEmpiezaEscaneos = New System.Windows.Forms.Button()
         Me.dtgEscaneos = New System.Windows.Forms.DataGridView()
-        Me.Disco = New System.Windows.Forms.DataGridViewTextBoxColumn()
-        Me.Escaneo = New AVManager.DataGridViewProgressColumn()
-        Me.Archivo = New System.Windows.Forms.DataGridViewTextBoxColumn()
         Me.cmsEscaneos = New System.Windows.Forms.ContextMenuStrip(Me.components)
         Me.CancelarEscaneoToolStripMenuItem = New System.Windows.Forms.ToolStripMenuItem()
         Me.ReiniciarEscaneoToolStripMenuItem = New System.Windows.Forms.ToolStripMenuItem()
@@ -46,6 +43,9 @@ Partial Class Escaneos
         Me.lblErrores = New System.Windows.Forms.Label()
         Me.lblEscaneos = New System.Windows.Forms.Label()
         Me.lblVersion = New System.Windows.Forms.Label()
+        Me.Disco = New System.Windows.Forms.DataGridViewTextBoxColumn()
+        Me.EscaneoProgreso = New AVManager.DataGridViewProgressColumn()
+        Me.Archivo = New System.Windows.Forms.DataGridViewTextBoxColumn()
         CType(Me.dtgEquipos, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.cmsEquipos.SuspendLayout()
         CType(Me.dtgEscaneos, System.ComponentModel.ISupportInitialize).BeginInit()
@@ -123,7 +123,7 @@ Partial Class Escaneos
         Me.dtgEscaneos.AllowUserToResizeRows = False
         Me.dtgEscaneos.BackgroundColor = System.Drawing.Color.FloralWhite
         Me.dtgEscaneos.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize
-        Me.dtgEscaneos.Columns.AddRange(New System.Windows.Forms.DataGridViewColumn() {Me.Disco, Me.Escaneo, Me.Archivo})
+        Me.dtgEscaneos.Columns.AddRange(New System.Windows.Forms.DataGridViewColumn() {Me.Disco, Me.EscaneoProgreso, Me.Archivo})
         Me.dtgEscaneos.ContextMenuStrip = Me.cmsEscaneos
         DataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft
         DataGridViewCellStyle1.BackColor = System.Drawing.Color.White
@@ -142,26 +142,6 @@ Partial Class Escaneos
         Me.dtgEscaneos.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect
         Me.dtgEscaneos.Size = New System.Drawing.Size(459, 384)
         Me.dtgEscaneos.TabIndex = 13
-        '
-        'Disco
-        '
-        Me.Disco.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.AllCells
-        Me.Disco.HeaderText = "Disco"
-        Me.Disco.Name = "Disco"
-        Me.Disco.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable
-        Me.Disco.Width = 38
-        '
-        'Escaneo
-        '
-        Me.Escaneo.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill
-        Me.Escaneo.HeaderText = "Escaneos"
-        Me.Escaneo.Name = "Escaneo"
-        '
-        'Archivo
-        '
-        Me.Archivo.HeaderText = "Archivos"
-        Me.Archivo.Name = "Archivo"
-        Me.Archivo.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable
         '
         'cmsEscaneos
         '
@@ -249,6 +229,26 @@ Partial Class Escaneos
         Me.lblVersion.Text = "v2"
         Me.lblVersion.TextAlign = System.Drawing.ContentAlignment.MiddleRight
         '
+        'Disco
+        '
+        Me.Disco.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.AllCells
+        Me.Disco.HeaderText = "Disco"
+        Me.Disco.Name = "Disco"
+        Me.Disco.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable
+        Me.Disco.Width = 38
+        '
+        'EscaneoProgreso
+        '
+        Me.EscaneoProgreso.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill
+        Me.EscaneoProgreso.HeaderText = "Escaneos"
+        Me.EscaneoProgreso.Name = "EscaneoProgreso"
+        '
+        'Archivo
+        '
+        Me.Archivo.HeaderText = "Archivos"
+        Me.Archivo.Name = "Archivo"
+        Me.Archivo.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable
+        '
         'Escaneos
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
@@ -296,6 +296,6 @@ Partial Class Escaneos
     Friend WithEvents Disks As DataGridViewTextBoxColumn
     Friend WithEvents UltimoEscaneo As DataGridViewTextBoxColumn
     Friend WithEvents Disco As DataGridViewTextBoxColumn
-    Friend WithEvents Escaneo As DataGridViewProgressColumn
+    Friend WithEvents EscaneoProgreso As DataGridViewProgressColumn
     Friend WithEvents Archivo As DataGridViewTextBoxColumn
 End Class
