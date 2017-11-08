@@ -100,6 +100,9 @@ Public Class Escaneos
         timerDBUpdate.Interval = CInt(TimeSpan.FromMinutes(30).TotalMilliseconds) '.FromDays(1).TotalMilliseconds)
         timerDBUpdate.Enabled = True
 
+        ' Settings de AV
+        Escaneo.FileThreshold = 10000
+
         ' TaskBar Progress Report
         'Dim a As Microsoft.WindowsAPICodePack.Taskbar.TabbedThumbnail = New Microsoft.WindowsAPICodePack.Taskbar.TabbedThumbnail(Me.Handle, Me)
         'a.Title = "Prueba"
@@ -175,7 +178,7 @@ Public Class Escaneos
                 If (Not EscaneoActual.Terminado And EscaneoActual.Comenzado) Then
                     ' Poner terminado y terminando en el if para validar que un no se haya comenzado la terminacion o terminado la misma del escaneo
                     If (Not EscaneoActual.Proceso.HasExited) Then
-                        dtgEscaneos.Item("Escaneo", i).Value = EscaneoActual.Progreso ' Actualiza el valor en el ProgressBar correspondiente
+                        dtgEscaneos.Item("EscaneoProgreso", i).Value = EscaneoActual.Progreso ' Actualiza el valor en el ProgressBar correspondiente
                         dtgEscaneos.Item("Archivo", i).Value = EscaneoActual.ArchivosEscaneados
                     Else
                         EscaneoActual.Terminar()
@@ -203,7 +206,7 @@ Public Class Escaneos
 
     '   Registra Exito en UI
     Private Function RegistraExitoUI(i As Integer)
-        dtgEscaneos.Item("Escaneo", i).Value = "Escaneo exitoso."
+        dtgEscaneos.Item("EscaneoProgreso", i).Value = "Escaneo exitoso."
         dtgEscaneos.Item(1, i).Style.BackColor = Color.DarkGreen
         dtgEscaneos.Item(1, i).Style.SelectionBackColor = Color.DarkGreen
         Debug.WriteLine("Escaneo " & dtgEscaneos.Item(0, i).Value & " terminó exitosamente.")
@@ -227,22 +230,22 @@ Public Class Escaneos
                 Dim exitCode As Integer = ListaEscaneos(i).Proceso.ExitCode
                 Debug.WriteLine("Escaneo " & dtgEscaneos.Item(0, i).Value & ": Exit code " & exitCode)
                 If (exitCode = codeParameter) Then
-                    dtgEscaneos.Item("Escaneo", i).Value = "Error: Parámetros incorrectos al iniciar escaneo."
+                    dtgEscaneos.Item("EscaneoProgreso", i).Value = "Error: Parámetros incorrectos al iniciar escaneo."
                 ElseIf (exitCode = codeInterrupted) Then
-                    dtgEscaneos.Item("Escaneo", i).Value = "Error: Escaneo interrumpido. (" & ListaEscaneos(i).Progreso & "%)"
+                    dtgEscaneos.Item("EscaneoProgreso", i).Value = "Error: Escaneo interrumpido. (" & ListaEscaneos(i).Progreso & "%)"
                 ElseIf (exitCode = codeCanceled) Then
-                    dtgEscaneos.Item("Escaneo", i).Value = "Error: Escaneo cancelado. (" & ListaEscaneos(i).Progreso & "%)"
+                    dtgEscaneos.Item("EscaneoProgreso", i).Value = "Error: Escaneo cancelado. (" & ListaEscaneos(i).Progreso & "%)"
                 ElseIf (exitCode = codeError) Then
-                    dtgEscaneos.Item("Escaneo", i).Value = "Error: No hay conexión con el equipo."
+                    dtgEscaneos.Item("EscaneoProgreso", i).Value = "Error: No hay conexión con el equipo."
                 ElseIf (ListaEscaneos(i).ArchivosEscaneados = 0) Then
-                    dtgEscaneos.Item("Escaneo", i).Value = "Error: Disco no compartido."
+                    dtgEscaneos.Item("EscaneoProgreso", i).Value = "Error: Disco no compartido."
                 ElseIf (ListaEscaneos(i).ArchivosEscaneados = 1) Then
-                    dtgEscaneos.Item("Escaneo", i).Value = "Error: Disco compartido sin permisos."
+                    dtgEscaneos.Item("EscaneoProgreso", i).Value = "Error: Disco compartido sin permisos."
                 Else
-                    dtgEscaneos.Item("Escaneo", i).Value = "Error: Escaneo interrumpido. (" & ListaEscaneos(i).Progreso & "%)"
+                    dtgEscaneos.Item("EscaneoProgreso", i).Value = "Error: Escaneo interrumpido. (" & ListaEscaneos(i).Progreso & "%)"
                 End If
             ElseIf (ListaEscaneos(i).Frozen) Then
-                dtgEscaneos.Item("Escaneo", i).Value = "Error: Escaneo cancelado (congelado). (" & ListaEscaneos(i).Progreso & "%)"
+                dtgEscaneos.Item("EscaneoProgreso", i).Value = "Error: Escaneo cancelado (congelado). (" & ListaEscaneos(i).Progreso & "%)"
             Else
                 'MsgBox("' debug Este else no sirve. (RegistraErrorUI)")
                 'ListaEscaneos(index).Terminado = False   ' No se reconoce la situación, se espera a que termine el proceso para conocer la situacion
@@ -252,7 +255,7 @@ Public Class Escaneos
             dtgEscaneos.Item(1, i).Style.BackColor = Color.DarkRed ' Cuando se detecta un error, se pone un fondo rojo al ProgressBar
             dtgEscaneos.Item(1, i).Style.SelectionBackColor = Color.DarkRed
         Catch ex As Exception
-            dtgEscaneos.Item("Escaneo", i).Value = "Error: Escaneo interrumpido. (" & ListaEscaneos(i).Progreso & "%)"
+            dtgEscaneos.Item("EscaneoProgreso", i).Value = "Error: Escaneo interrumpido. (" & ListaEscaneos(i).Progreso & "%)"
         End Try
         Debug.WriteLine("Error en escaneo " & dtgEscaneos.Item(0, i).Value & ".")
         Errores += 1
@@ -309,7 +312,7 @@ Public Class Escaneos
             HoraLimite = 0
         End If
 
-        HoraLimite = 18 ' debug
+        HoraLimite = 19 ' debug
 
         timerFrozen.Enabled = True
         Do While (Validos < MaximoEscaneosTotales And Date.Now.Hour < HoraLimite) ' Mientras que no se cumplan los escaneos y aún no sean las 5 PM.
