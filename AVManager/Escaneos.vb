@@ -182,7 +182,7 @@ Public Class Escaneos
                         dtgEscaneos.Item("Archivo", i).Value = EscaneoActual.ArchivosEscaneados
                     Else
                         EscaneoActual.Terminar()
-                        If (EscaneoActual.Proceso.ExitCode = codeSuccess Or EscaneoActual.Progreso >= 99) Then     ' Solamente los equipos que tuvieron un % de escaneo de 99+ se considerarán como válidos
+                        If (EscaneoActual.Progreso >= 99 And EscaneoActual.FileCount >= Escaneo.FileThreshold) Then     ' Solamente los equipos que tuvieron un % de escaneo de 99+ se considerarán como válidos ' EscaneoActual.Proceso.ExitCode = codeSuccess Or 
                             RegistraExitoUI(i)
                             ' Actualizamos la fecha de ultimo escaneo en la lista de equipos
                             For c = 0 To dtgEquipos.RowCount - 1

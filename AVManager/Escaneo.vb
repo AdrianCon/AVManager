@@ -23,7 +23,7 @@ Public Class Escaneo
     Private Cancelando As Boolean
     Private _ArchivosEscaneados As Integer
     Private _Progreso As Integer
-    Private FileCount As Long
+    Private _FileCount As Long
     Private FrozenFileCount As Integer
     Private _Frozen As Boolean
     Private Output As String
@@ -112,6 +112,14 @@ Public Class Escaneo
             _Proceso = value
         End Set
     End Property                ' Proceso - Public Get, Private Set
+    Public Property FileCount() As Long
+        Get
+            Return _FileCount
+        End Get
+        Private Set(value As Long)
+            _FileCount = value
+        End Set
+    End Property                 ' FileCount - Public Get, Private Set
 
 
     Public Sub New(ByVal index As Integer, ByRef disco As ParseObject, ByVal manual As Boolean)
