@@ -226,30 +226,28 @@ Public Class Escaneos
         Try
             ListaEscaneos(i).Proceso.Refresh()
             If (ListaEscaneos(i).Terminado) Then
-                ListaEscaneos(i).Proceso.Refresh()
                 Dim exitCode As Integer = ListaEscaneos(i).Proceso.ExitCode
                 Debug.WriteLine("Escaneo " & dtgEscaneos.Item(0, i).Value & ": Exit code " & exitCode)
-                If (exitCode = codeParameter) Then
-                    dtgEscaneos.Item("EscaneoProgreso", i).Value = "Error: Parámetros incorrectos al iniciar escaneo."
-                ElseIf (exitCode = codeInterrupted) Then
-                    dtgEscaneos.Item("EscaneoProgreso", i).Value = "Error: Escaneo interrumpido. (" & ListaEscaneos(i).Progreso & "%)"
-                ElseIf (exitCode = codeCanceled) Then
-                    dtgEscaneos.Item("EscaneoProgreso", i).Value = "Error: Escaneo cancelado. (" & ListaEscaneos(i).Progreso & "%)"
-                ElseIf (exitCode = codeError) Then
-                    dtgEscaneos.Item("EscaneoProgreso", i).Value = "Error: No hay conexión con el equipo."
-                ElseIf (ListaEscaneos(i).ArchivosEscaneados = 0) Then
-                    dtgEscaneos.Item("EscaneoProgreso", i).Value = "Error: Disco no compartido."
-                ElseIf (ListaEscaneos(i).ArchivosEscaneados = 1) Then
-                    dtgEscaneos.Item("EscaneoProgreso", i).Value = "Error: Disco compartido sin permisos."
-                Else
-                    dtgEscaneos.Item("EscaneoProgreso", i).Value = "Error: Escaneo interrumpido. (" & ListaEscaneos(i).Progreso & "%)"
-                End If
+                Select Case exitCode
+                    Case codeParameter
+                        dtgEscaneos.Item("EscaneoProgreso", i).Value = "Error: Parámetros incorrectos al iniciar escaneo."
+                    Case codeInterrupted
+                        dtgEscaneos.Item("EscaneoProgreso", i).Value = "Error: Escaneo interrumpido. (" & ListaEscaneos(i).Progreso & "%)"
+                    Case codeCanceled
+                        dtgEscaneos.Item("EscaneoProgreso", i).Value = "Error: Escaneo cancelado. (" & ListaEscaneos(i).Progreso & "%)"
+                    Case codeError
+                        dtgEscaneos.Item("EscaneoProgreso", i).Value = "Error: No hay conexión con el equipo."
+                    Case Else
+                        If (ListaEscaneos(i).ArchivosEscaneados = 1) Then
+                            dtgEscaneos.Item("EscaneoProgreso", i).Value = "Error: Disco compartido sin permisos."
+                        Else
+                            dtgEscaneos.Item("EscaneoProgreso", i).Value = "Error: Escaneo interrumpido. (" & ListaEscaneos(i).Progreso & "%)"
+                        End If
+                End Select
             ElseIf (ListaEscaneos(i).Frozen) Then
                 dtgEscaneos.Item("EscaneoProgreso", i).Value = "Error: Escaneo cancelado (congelado). (" & ListaEscaneos(i).Progreso & "%)"
             Else
-                'MsgBox("' debug Este else no sirve. (RegistraErrorUI)")
-                'ListaEscaneos(index).Terminado = False   ' No se reconoce la situación, se espera a que termine el proceso para conocer la situacion
-                'ListaEscaneos(i).Terminar(False)
+                ' No se reconoce la situación, se espera a que termine el proceso para conocer la situacion
                 Exit Function
             End If
             dtgEscaneos.Item(1, i).Style.BackColor = Color.DarkRed ' Cuando se detecta un error, se pone un fondo rojo al ProgressBar
@@ -274,25 +272,40 @@ Public Class Escaneos
         mnuDetener.Visible = True
         mnuPausar.Visible = True
         mnuReanudar.Visible = False
-        Dim temp As Task = LlenaEquipos()   ' Para evitar hacer el Sub Async, llamamos LlenaEquipos de manera async
-        Do While Not temp.Status = temp.Status.RanToCompletion  ' Pero luego detenemos el programa hasta que haya terminado LlenaEquipos
-            Thread.Sleep(50)  ' Para reducir la carga de este ciclo en el CPU, agregamos un delay
-            Application.DoEvents()      ' Para evitar que el UI se congele despues de dormir el thread principal
-        Loop
-        dtgEscaneos.Rows.Clear()        ' Reiniciamos la lista de los escaneos actuales
 
-        For i = 0 To dtgEquipos.Rows.Count - 1
-            Dim tmp As Date = Date.MinValue
-            Date.TryParse(dtgEquipos.Item(2, i).Value, tmp)
-            If (tmp <= Date.Now.AddDays(-7)) Then
-                Dim nombreDisco As String = dtgEquipos.Item("Disks", i).Value.ToString.Substring(0, dtgEquipos.Item("Disks", i).Value.ToString.Length - 1)
-                Dim escaneo As Escaneo = New Escaneo(dtgEscaneos.RowCount, ListaDiscos(i), False)
-                ListaEscaneos.Add(escaneo)
+        ' Valida que no haya escaneos en progreso
+        Dim bProgreso As Boolean = False
+        For i = 0 To ListaEscaneos.Count - 1
+            If (Not ListaEscaneos(i).Terminado) Then
+                bProgreso = True
+                Exit For
             End If
         Next
 
-        MaximoEscaneosActivos = 3      ' Máximo de escaneos paralelos que ocurren simultaneamente
-        EscaneosActivos = 0      ' Número actual de escaneos paralelos activos
+        If (Not bProgreso) Then
+            Dim temp As Task = LlenaEquipos()   ' Para evitar hacer el Sub Async, llamamos LlenaEquipos de manera async
+            Do While Not temp.Status = temp.Status.RanToCompletion  ' Pero luego detenemos el programa hasta que haya terminado LlenaEquipos
+                Thread.Sleep(50)  ' Para reducir la carga de este ciclo en el CPU, agregamos un delay
+                Application.DoEvents()      ' Para evitar que el UI se congele despues de dormir el thread principal
+            Loop
+            dtgEscaneos.Rows.Clear()        ' Reiniciamos la lista de los escaneos actuales
+            ListaEscaneos.Clear()
+        End If
+
+        Dim tmp As Date = Date.MinValue
+        For i = 0 To dtgEquipos.Rows.Count - 1
+            Date.TryParse(dtgEquipos.Item(2, i).Value, tmp)
+            If (tmp <= Date.Now.AddDays(-7)) Then
+                Dim nombreDisco As String = dtgEquipos.Item("Disks", i).Value.ToString.Substring(0, dtgEquipos.Item("Disks", i).Value.ToString.Length - 1)
+                Dim oEscaneo As Escaneo = New Escaneo(dtgEscaneos.RowCount, ListaDiscos(i), False)
+                If (Not ListaEscaneos.Contains(oEscaneo)) Then
+                    ListaEscaneos.Add(oEscaneo)
+                End If
+            End If
+        Next
+
+        MaximoEscaneosActivos = 3   ' Máximo de escaneos paralelos que ocurren simultaneamente
+        EscaneosActivos = 0         ' Número actual de escaneos paralelos activos
         Dim DiasActivos As Integer = 6
         MaximoEscaneosTotales = dtgEquipos.RowCount / If(DiasActivos - 1 > 0, DiasActivos - 1, 1) '* 12    ' Máximo de escaneos válidos por día
         Validos = 0 ' Número actual de escaneos válidos
@@ -303,14 +316,16 @@ Public Class Escaneos
         End If
 
         Dim HoraLimite As Integer
-        If (Date.Now.DayOfWeek <= DiasActivos) Then
+        If (Date.Now.DayOfWeek <= DiasActivos And Date.Now.DayOfWeek <> DayOfWeek.Sunday) Then
             HoraLimite = 17  ' Hora a la que ya no se iniciarán mas escaneos (24h)
-            If (Date.Now.DayOfWeek >= 6) Then
+            If (Date.Now.DayOfWeek = DayOfWeek.Saturday) Then
                 HoraLimite = 13             ' 1 PM en Sábados
             End If
         Else
             HoraLimite = 0
         End If
+
+        ' Hay un error al inciar los escaneos diarios cuando ya hay como 5  escaneos manuales iniciados. El numero de escaneos automaticos baja a 2 en vez de 3.
 
         HoraLimite = 19 ' debug
 
@@ -343,13 +358,13 @@ Public Class Escaneos
                             If (nombre = dtgEscaneos.Item(0, i).Value) Then
                                 If (ListaEscaneos(i).Terminado) Then '   Si ya terminó el escaneo, checamos si fue valido o error
                                     If (ListaEscaneos(i).Progreso = 100) Then
-                                        Continue Do
+                                        Continue For
                                         'Validos -= 1
                                     Else
                                         Errores -= 1
                                     End If
                                 Else
-                                    Continue Do    '   Si no ha terminado el escaneo, nos lo brincamos
+                                    Continue For    '   Si no ha terminado el escaneo, nos lo brincamos
                                 End If
                             End If
                         Next
@@ -468,11 +483,11 @@ Public Class Escaneos
         Dim fechaInicial As Date = Date.Now
         Dim fechaFinal As Date = fechaInicial
         Dim HoraInicio As Integer = 9   ' Hora de inicio diario de los escaneos (Formato 24 hrs)
+
         If (btnEmpiezaEscaneos.Enabled And Date.Now.DayOfWeek > 0) Then
             fechaFinal = fechaFinal.AddHours(HoraInicio - fechaFinal.Hour)
             fechaFinal = fechaFinal.AddDays(1)
             fechaFinal.AddMinutes(-fechaFinal.Minute)
-            ListaEscaneos.Clear()
             btnEmpiezaEscaneos.PerformClick()
         Else
             fechaFinal = fechaFinal.AddMinutes(30)  ' Si aun no terminan los escaneos, vuelve a intenarlo en 30 minutos.

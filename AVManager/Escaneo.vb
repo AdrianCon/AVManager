@@ -4,6 +4,8 @@ Imports Parse
 Imports System.IO
 
 Public Class Escaneo
+    Implements IEquatable(Of Escaneo)
+
     '   Static variable for all scans
     Public Shared FileThreshold As Integer
 
@@ -125,7 +127,7 @@ Public Class Escaneo
     Public Sub New(ByVal index As Integer, ByRef disco As ParseObject, ByVal manual As Boolean)
         Me.Equipo = disco.Get(Of ParseObject)("Equipo").Get(Of String)("NombreDeRed")
         Me.Disco = New Disco(disco)
-        Path = "\\" & Me.Equipo & "\" & Me.Disco.Nombre
+        Path = "\\" & Me.Equipo & "\" & Me.Disco.Nombre ' & "$" ' (Para equipos en dominio, el compartido es automático)
 
         RowIndex = index
         ID = Nothing    ' ID es configurado cuando se incia el proceso
@@ -535,6 +537,16 @@ Public Class Escaneo
         Loop
 
         Return result
+    End Function
+
+
+    Public Overloads Function Equals(ByVal other As Escaneo) _
+            As Boolean Implements IEquatable(Of Escaneo).Equals
+        If Path = other.Path Then
+            Return True
+        Else
+            Return False
+        End If
     End Function
 
 End Class

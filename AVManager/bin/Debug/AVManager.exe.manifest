@@ -4,7 +4,7 @@
   <description asmv2:iconFile="Resources\Juguel Icono.ico" xmlns="urn:schemas-microsoft-com:asm.v1" />
   <application />
   <entryPoint>
-    <assemblyIdentity name="AVManager" version="1.0.6520.33652" language="neutral" processorArchitecture="msil" />
+    <assemblyIdentity name="AVManager" version="1.0.6557.22418" language="neutral" processorArchitecture="msil" />
     <commandLine file="AVManager.exe" parameters="" />
   </entryPoint>
   <trustInfo>
@@ -43,14 +43,14 @@
     </dependentAssembly>
   </dependency>
   <dependency>
-    <dependentAssembly dependencyType="install" allowDelayedBinding="true" codebase="AVManager.exe" size="1770408">
-      <assemblyIdentity name="AVManager" version="1.0.6520.33652" language="neutral" processorArchitecture="msil" />
+    <dependentAssembly dependencyType="install" allowDelayedBinding="true" codebase="AVManager.exe" size="1770920">
+      <assemblyIdentity name="AVManager" version="1.0.6557.22418" language="neutral" processorArchitecture="msil" />
       <hash>
         <dsig:Transforms>
           <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
         </dsig:Transforms>
         <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-        <dsig:DigestValue>75vTmcqxxk4WT8j6OBmknOm+6crcZjmSeF51+vFAmWg=</dsig:DigestValue>
+        <dsig:DigestValue>H3tQBjo0qHTF9LajZjm0bjMTfV536eYMXPGqT47q8hI=</dsig:DigestValue>
       </hash>
     </dependentAssembly>
   </dependency>
