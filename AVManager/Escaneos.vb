@@ -339,7 +339,7 @@ Public Class Escaneos
                     mnuPausar.Visible = False
                     mnuReanudar.Visible = False
                     btnEmpiezaEscaneos.Enabled = True
-                    Exit Sub
+                    Exit Do
                 End If
                 Do While Pausado
                     Thread.Sleep(100)
