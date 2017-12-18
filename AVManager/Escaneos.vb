@@ -428,7 +428,6 @@ Public Class Escaneos
 
         If (Date.Now.Hour >= HoraLimite) Then
             Debug.WriteLine("Se detuvo la busqueda de equipos por escanear debido a la hora. (" & If(HoraLimite > 12, HoraLimite - 12 & ":00 PM)", HoraLimite & ":00 AM)"))
-            mnuDetener.PerformClick() ' Detenemos la creación de nuevos escaneos debido a la hora.
         End If
 
         While EscaneosActivos >= 1               ' Una vez terminado el for... esperamos a que todos los escaneos terminen
