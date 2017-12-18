@@ -316,7 +316,7 @@ Public Class Escaneos
         End If
 
         Dim HoraLimite As Integer
-        If (Date.Now.DayOfWeek <= DiasActivos And Date.Now.DayOfWeek <> DayOfWeek.Sunday) Then
+        If (Date.Now.DayOfWeek <= DiasActivos And Date.Now.DayOfWeek > DayOfWeek.Sunday) Then
             HoraLimite = 17  ' Hora a la que ya no se iniciarán mas escaneos (24h)
             If (Date.Now.DayOfWeek = DayOfWeek.Saturday) Then
                 HoraLimite = 13             ' 1 PM en Sábados
@@ -426,12 +426,17 @@ Public Class Escaneos
             Debug.WriteLine("Done Sleeping.")
         Loop
 
+        ' Al haberse detenido el scanner, quitamos las opciones del icono.
+        mnuDetener.Visible = False
+        mnuPausar.Visible = False
+        mnuReanudar.Visible = False
+
         If (Date.Now.Hour >= HoraLimite) Then
             Debug.WriteLine("Se detuvo la busqueda de equipos por escanear debido a la hora. (" & If(HoraLimite > 12, HoraLimite - 12 & ":00 PM)", HoraLimite & ":00 AM)"))
         End If
 
         While EscaneosActivos >= 1               ' Una vez terminado el for... esperamos a que todos los escaneos terminen
-            Thread.Sleep(100)     ' Checamos cada 0.5 segundos si ya no hay escaneos activos
+            Thread.Sleep(100)     ' Checamos cada 0.1 segundos si ya no hay escaneos activos
             Application.DoEvents()
         End While
 
@@ -439,9 +444,6 @@ Public Class Escaneos
         timerFrozen.Stop()
 
         Debug.WriteLine("Se hicieron " & Validos & " escaneos válidos.")
-        mnuDetener.Visible = False
-        mnuPausar.Visible = False
-        mnuReanudar.Visible = False
         btnEmpiezaEscaneos.Enabled = True   ' Al terminar, reactivamos el boton para poder comenzar los escaneos nuevamente
     End Sub
 
