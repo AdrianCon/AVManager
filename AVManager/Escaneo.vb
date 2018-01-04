@@ -127,8 +127,14 @@ Public Class Escaneo
     Public Sub New(ByVal index As Integer, ByRef disco As ParseObject, ByVal manual As Boolean)
         Me.Equipo = disco.Get(Of ParseObject)("Equipo").Get(Of String)("NombreDeRed")
         Me.Disco = New Disco(disco)
-        Path = "\\" & Me.Equipo & "\" & Me.Disco.Nombre ' & "$" ' (Para equipos en dominio, el compartido es automático)
-
+        Path = "\\" & Me.Equipo & "\" & Me.Disco.Nombre
+        If Me.Disco.Nombre.Length = 1 Then
+            If disco.ContainsKey("Dominio") Then
+                If disco.Get(Of String)("Dominio") = DomainName Then
+                    Path = Path & "$" ' (Para equipos en dominio, el compartido es automático)
+                End If
+            End If
+        End If
         RowIndex = index
         ID = Nothing    ' ID es configurado cuando se incia el proceso
         Me.Manual = manual
