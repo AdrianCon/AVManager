@@ -125,7 +125,9 @@ Public Class Escaneo
 
 
     Public Sub New(ByVal index As Integer, ByRef disco As ParseObject, ByVal manual As Boolean)
-        Me.Equipo = disco.Get(Of ParseObject)("Equipo").Get(Of String)("NombreDeRed")
+        Dim equipo As ParseObject
+        equipo = disco.Get(Of ParseObject)("Equipo")
+        Me.Equipo = equipo.Get(Of String)("NombreDeRed")
         Me.Disco = New Disco(disco)
         Path = "\\" & Me.Equipo & "\" & Me.Disco.Nombre
         If Me.Disco.Nombre.Length = 1 Then

@@ -304,7 +304,7 @@ Public Class Escaneos
             End If
         Next
 
-        MaximoEscaneosActivos = 3   ' Máximo de escaneos paralelos que ocurren simultaneamente
+        MaximoEscaneosActivos = 5   ' Máximo de escaneos paralelos que ocurren simultaneamente
         EscaneosActivos = 0         ' Número actual de escaneos paralelos activos
         Dim DiasActivos As Integer = 6
         MaximoEscaneosTotales = dtgEquipos.RowCount / If(DiasActivos - 1 > 0, DiasActivos - 1, 1) '* 12    ' Máximo de escaneos válidos por día
@@ -504,7 +504,6 @@ Public Class Escaneos
     Private Sub timerDBUpdate_Tick(sender As Object, e As EventArgs) Handles timerDBUpdate.Tick
         Shell(Chr(34) & Privado.ProgramPath & Chr(34) & " update", AppWinStyle.Hide)
     End Sub
-
 
 
 
