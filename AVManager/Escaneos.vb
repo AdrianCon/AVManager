@@ -267,7 +267,7 @@ Public Class Escaneos
     End Function
 
     '   Trae a todos los equipos pendientes de escaneo y comienza el escaneo de 'MaxEscaneos' equipos en grupos de 'MaxThreads'
-    Private Sub btnEmpiezaEscaneos_Click(sender As Object, e As EventArgs) Handles btnEmpiezaEscaneos.Click
+    Private Async Function EmpiezaEscaneos() As Task
         btnEmpiezaEscaneos.Enabled = False  ' No se debe de iniciar el proceso de escaneos varias veces simultaneamente
         mnuDetener.Visible = True
         mnuPausar.Visible = True
@@ -286,7 +286,7 @@ Public Class Escaneos
             Dim temp As Task = LlenaEquipos()   ' Para evitar hacer el Sub Async, llamamos LlenaEquipos de manera async
             Do While Not temp.Status = temp.Status.RanToCompletion  ' Pero luego detenemos el programa hasta que haya terminado LlenaEquipos
                 Thread.Sleep(50)  ' Para reducir la carga de este ciclo en el CPU, agregamos un delay
-                Application.DoEvents()      ' Para evitar que el UI se congele despues de dormir el thread principal
+                'Application.DoEvents()      ' Para evitar que el UI se congele despues de dormir el thread principal
             Loop
             dtgEscaneos.Rows.Clear()        ' Reiniciamos la lista de los escaneos actuales
             ListaEscaneos.Clear()
@@ -304,7 +304,7 @@ Public Class Escaneos
             End If
         Next
 
-        MaximoEscaneosActivos = 3   ' Máximo de escaneos paralelos que ocurren simultaneamente
+        MaximoEscaneosActivos = 5   ' Máximo de escaneos paralelos que ocurren simultaneamente
         EscaneosActivos = 0         ' Número actual de escaneos paralelos activos
         Dim DiasActivos As Integer = 6
         MaximoEscaneosTotales = dtgEquipos.RowCount / If(DiasActivos - 1 > 0, DiasActivos - 1, 1) '* 12    ' Máximo de escaneos válidos por día
@@ -343,7 +343,7 @@ Public Class Escaneos
                 End If
                 Do While Pausado
                     Thread.Sleep(100)
-                    Application.DoEvents()
+                    'Application.DoEvents()
                 Loop
                 If Validos >= MaximoEscaneosTotales Then  ' Una vez que se hayan escaneado maxEscaneos equipos, terminamos de escanear y salimos del ciclo
                     Exit Do
@@ -408,20 +408,20 @@ Public Class Escaneos
                         EscaneosActivos = EscaneosActivos + 1             ' Aumentamos la variable de control que indica cuantos escaneos simultaneos hay actualmente
                         Thread.Sleep(50)          ' Damos 50ms antes de comenzar el siguiente escaneo, para dar tiempo al programa de modificar las variables de control antes de continuar
                         '                                     (NumThreads, Validos, etc)
-                        Application.DoEvents()              ' Evitamos que se congele el UI
+                        'Application.DoEvents()              ' Evitamos que se congele el UI
                     End If
                 End If
 
                 ' Mientras que no sea necesario crear un nuevo thread, esperamos a que algun escaneo termine para liberar un thread
                 While EscaneosActivos >= MaximoEscaneosActivos Or Validos + EscaneosActivos >= MaximoEscaneosTotales And Validos < MaximoEscaneosTotales
                     Thread.Sleep(100)             ' Checamos cada 100ms si ya hay un thread disponible
-                    Application.DoEvents()
+                    'Application.DoEvents()
                 End While
             Next
             Debug.WriteLine("Sleeping.")
             For cs = 1 To 18000                             ' Threading.Thread.Sleep(10000 + 0 * 30 * 60 * 1000) ' Dormimos 30 Minutos
                 Thread.Sleep(100)                 ' Se divide en varios para evitar congelar el UI
-                Application.DoEvents()
+                'Application.DoEvents()
             Next
             Debug.WriteLine("Done Sleeping.")
         Loop
@@ -438,7 +438,7 @@ Public Class Escaneos
         ' Esperamos a que todos los escaneos terminen
         While EscaneosActivos >= 1
             Thread.Sleep(100)     ' Checamos cada 0.1 segundos si ya no hay escaneos activos
-            Application.DoEvents()
+            'Application.DoEvents()
         End While
 
         timerUpdates.Stop()
@@ -446,7 +446,15 @@ Public Class Escaneos
 
         Debug.WriteLine("Se hicieron " & Validos & " escaneos válidos.")
         btnEmpiezaEscaneos.Enabled = True   ' Al terminar, reactivamos el boton para poder comenzar los escaneos nuevamente
+    End Function
+
+    '   Genera un thread async para el Thread Manager
+    Private Sub btnEmpiezaEscaneos_Click(sender As Object, e As EventArgs) Handles btnEmpiezaEscaneos.Click
+        Task.Run(Function()
+                     Return EmpiezaEscaneos()
+                 End Function)
     End Sub
+
 
     '   Ejecuta un comando para cancelar el escaneo que se le indique, segun el inidce en dtgEscaneos
     Private Async Function CancelaEscaneo(index As Integer) As Task
